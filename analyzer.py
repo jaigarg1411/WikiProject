@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import requests
 import numpy as np
 from pymongo.errors import ConnectionFailure
+from collections import Counter
 
 
 '''def download_file(filename):
@@ -69,13 +70,21 @@ class Analyzer:
 
     def listOfEditors(self, collection_name):
         editors = []
-        if collection_name not in (self.mongoClientDB).list_collection_names():
-            editors.append("--Collection with specified name does not exist--")
-            return editors
         collection = self.mongoClientDB[collection_name]
         editors = (collection.distinct('user'))
-        return editors   
-        
+        return editors 
+
+    def topEditors(self, collection_name):
+        top_editors = {}  
+        collection = self.mongoClientDB[collection_name]
+        result = list(collection.aggregate([{"$group" : {"_id" : "$user", "num_comments" : {"$sum" : 1}}}]))
+        for each in result:
+            editor = each.get('_id')
+            num_comments = each.get('num_comments')
+            top_editors[editor] = num_comments
+        top = Counter(top_editors)
+        top_editors = top.most_common(3)
+        return top_editors
 
     def deleteCollection(self, collection_name):
         collection = self.mongoClientDB[collection_name]
@@ -405,12 +414,19 @@ if __name__ == '__main__':
 
     #List the editors
     collection_name = 'India'
-    editors = analyzer.listOfEditors(collection_name)
-    if len(editors)>0 and editors[0] == "--Collection with specified name does not exist--":
-        print('--Collection ',collection_name,  'does not exist--')
+    if collection_name not in (mongoClientDB).list_collection_names():
+        print("--Collection with specified name does not exist--")
     else:
-        print('This talk page has ', len(editors), 'editors')
-
+        editors = analyzer.listOfEditors(collection_name)
+        print('\'',collection_name,'\' talk page has', len(editors), 'editors')
+    
+    #Find top editors
+    collection_name = 'India'
+    if collection_name not in (mongoClientDB).list_collection_names():
+        print("--Collection with specified name does not exist--")
+    else:
+        top_editors = analyzer.topEditors(collection_name)
+        print('List of top 3 editors: ', top_editors)
     #analyzer.setCollectionName('sample')
     #print(analyzer.getAllAuthors())
     #analyzer.downloadAndLoad(
