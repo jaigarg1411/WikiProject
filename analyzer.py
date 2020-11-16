@@ -54,7 +54,11 @@ class Analyzer:
         json_file = file + '.json'
         open(filename, 'wb').write(r.content)
 
-    def putInDatabase(self, collection_name, file_name):
+    def putInDatabase(self, file_name):
+        collection_name = file_name[:-5]
+        if collection_name in (self.mongoClientDB).list_collection_names():
+            collection = self.mongoClientDB[collection_name]
+            collection.drop()
         collection = self.mongoClientDB[collection_name]
         with open(file_name) as file: 
             file_data = json.load(file)
@@ -62,6 +66,16 @@ class Analyzer:
             collection.insert_many(file_data)   
         else: 
             collection.insert_one(file_data)
+
+    def listOfEditors(self, collection_name):
+        editors = []
+        if collection_name not in (self.mongoClientDB).list_collection_names():
+            editors.append("--Collection with specified name does not exist--")
+            return editors
+        collection = self.mongoClientDB[collection_name]
+        editors = (collection.distinct('user'))
+        return editors   
+        
 
     def deleteCollection(self, collection_name):
         collection = self.mongoClientDB[collection_name]
@@ -384,8 +398,20 @@ if __name__ == '__main__':
         exit()
     mongoClientDB = myclient['mywikidump']
     analyzer = Analyzer(myclient, mongoClientDB)
-    analyzer.putInDatabase('sample', 'sample.json')
-    analyzer.setCollectionName('sample')
+    #analyzer.putInDatabase('sample.json')
+    analyzer.putInDatabase('India.json')
+    analyzer.putInDatabase('Narendra Modi.json')
+    analyzer.putInDatabase('Donald Trump.json')
+
+    #List the editors
+    collection_name = 'India'
+    editors = analyzer.listOfEditors(collection_name)
+    if len(editors)>0 and editors[0] == "--Collection with specified name does not exist--":
+        print('--Collection ',collection_name,  'does not exist--')
+    else:
+        print('This talk page has ', len(editors), 'editors')
+
+    #analyzer.setCollectionName('sample')
     #print(analyzer.getAllAuthors())
     #analyzer.downloadAndLoad(
         #'Indian_Institute_of_Technology_Ropar', 'Indian_Institute_of_Technology_Ropar')
