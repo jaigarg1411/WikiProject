@@ -69,12 +69,11 @@ class Analyzer:
             collection.insert_one(file_data)
 
     def listOfEditors(self, collection_name):
-        editors = []
         collection = self.mongoClientDB[collection_name]
         editors = (collection.distinct('user'))
         return editors 
 
-    def topEditors(self, collection_name):
+    def topNEditors(self, collection_name, n):
         top_editors = {}  
         collection = self.mongoClientDB[collection_name]
         result = list(collection.aggregate([{"$group" : {"_id" : "$user", "num_comments" : {"$sum" : 1}}}]))
@@ -82,11 +81,22 @@ class Analyzer:
             editor = each.get('_id')
             num_comments = each.get('num_comments')
             top_editors[editor] = num_comments
-        top = Counter(top_editors)
-        top_editors = top.most_common(3)
+        if n > len(top_editors):
+            top_editors = list(top_editors.items())
+        else:
+            top = Counter(top_editors)
+            top_editors = top.most_common(n)
         return top_editors
 
-    def deleteCollection(self, collection_name):
+    def commonEditors(self, collection_name1, collection_name2):
+        collection1 = self.mongoClientDB[collection_name1]
+        editors1 = (collection1.distinct('user'))
+        collection2 = self.mongoClientDB[collection_name2]
+        editors2 = (collection2.distinct('user'))
+        common_editors = list(set(editors1) & set(editors2))
+        return common_editors
+
+    """def deleteCollection(self, collection_name):
         collection = self.mongoClientDB[collection_name]
         collection.drop()
 
@@ -393,7 +403,7 @@ class Analyzer:
         dictionary['standardDev'] = standardDev
         dictionary['count'] = count
         dictionary['variance'] = variance
-        return dictionary
+        return dictionary"""
 
 
 if __name__ == '__main__':
@@ -425,8 +435,19 @@ if __name__ == '__main__':
     if collection_name not in (mongoClientDB).list_collection_names():
         print("--Collection with specified name does not exist--")
     else:
-        top_editors = analyzer.topEditors(collection_name)
-        print('List of top 3 editors: ', top_editors)
+        n = 5
+        top_editors = analyzer.topNEditors(collection_name, n)
+        print('List of top', len(top_editors), 'editors: ', top_editors)
+
+    #Common editors
+    collection_name1 = 'India'
+    collection_name2 = 'Narendra Modi'
+    if collection_name1 not in (mongoClientDB).list_collection_names() or collection_name2 not in (mongoClientDB).list_collection_names():
+        print("--Collection does not exist--")
+    else:
+        common_editors = analyzer.commonEditors(collection_name1, collection_name2)
+        print('Common editors are: ', common_editors)
+
     #analyzer.setCollectionName('sample')
     #print(analyzer.getAllAuthors())
     #analyzer.downloadAndLoad(
