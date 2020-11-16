@@ -1,0 +1,33 @@
+[
+  {
+    "date": "2020-10-06T01:33:00Z",
+    "id": 1,
+    "parent_id": 0,
+    "section": "Proposed shortening of one sentence in the lead section",
+    "text": "{{Pin message|}}{{User:ClueBot III/DoNotArchiveUntil|1919588755}}\n\nAny thoughts on shortening a statement in the lead section as follows?\n\n:<u>CURRENT VERSION</u>: {{green|Trump has made many false or misleading statements during his campaign and presidency. The statements have been documented by fact-checkers, and the media have widely described the phenomenon as unprecedented in American politics.}}\n\n:<u>PROPOSED NEW VERSION</u>: {{green|Trump has made many false and misleading statements during his campaigns and presidency, to a degree unprecedented in American politics.}}\n\nThis would go down from 33 words to 22 words; it would preserve the most important bits (i.e., the level/rate of falsehoods is unprecedented) while omitting the unremarkable/obvious (the fact that these falsehoods have been documented - obviously they have been or else we wouldn't be making a reference to it in the Wikipedia bio).",
+    "user": "Neutrality"
+  },
+  {
+    "date": "2020-10-06T13:58:00Z",
+    "id": 2,
+    "parent_id": 1,
+    "section": "Proposed shortening of one sentence in the lead section",
+    "text": "This seeks to alter [[#Current consensus]] #35.{{pb}}{{tq|the fact that these falsehoods have been documented - obviously they have been or else we wouldn't be making a reference to it in the Wikipedia bio}} - I'd disagree with that statement. We might be saying that because reliable sources have said that without any documented fact-checking (or at least without anything remotely approaching the scale of what WaPo et al have done). We do that kind of thing all the time. We generally don't require sources to prove the truth of what they say. [[User:Mandruss|Mandruss]][[User talk:Mandruss|]] 01:42, 6 October 2020 (UTC)\n::* On the actual proposed rewording, do you support or oppose? It was not clear to me from your comment.",
+    "user": "Neutrality"
+  },
+  {
+    "date": "2020-10-06T10:42:00Z",
+    "id": 3,
+    "parent_id": 2,
+    "section": "Proposed shortening of one sentence in the lead section",
+    "text": "That's because I'm waiting for other comments. I could even end up abstaining, and you'll know that by the absence of a bullet with my name on it. [[User:Mandruss|Mandruss]][[User talk:Mandruss|]] 14:06, 6 October 2020 (UTC)\n::::I would like to see some discussion about the need for \"the media have widely described\" wrt NPOV. And whether the change is due to a change in situation or due to differences in policy interpretation. [[User:Mandruss|Mandruss]][[User talk:Mandruss|]] 14:15, 6 October 2020 (UTC)\n:Minor note...\"his campaign\" is singular, whereas he has had two campaigns now.  (Though \"false and misleading statements\" doesn't begin to cover the situation...) Perhaps an opportunity to finally change \"The statements have been...\" to \"The misinformation has been...\"",
+    "user": "Bdushaw"
+  },
+  {
+    "date": "2020-10-06T11:22:00Z",
+    "id": 4,
+    "parent_id": 0,
+    "section": "Proposed shortening of one sentence in the lead section",
+    "text": "*Support the proposal with \"campaign\" changi7ng to \"campaigns\". I've long thought the extra stuff was really just there to deter edit warring, but as l"
+  }
+]
