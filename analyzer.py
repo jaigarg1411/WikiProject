@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from collections import Counter
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 sentiment_intensity_analyzer = SentimentIntensityAnalyzer()
+import pandas as pd
 
 
 '''
@@ -116,6 +117,32 @@ class Analyzer:
                 comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(comment["text"])
                 comments.append(comment)
 
+        return comments
+
+    def getCommentsByDate(self, collection_name, day=None, month=None, year=None):
+        collection = self.mongoClientDB[collection_name]
+        comments = []
+        for each in collection.find():
+            date = each["date"]
+            df = pd.DataFrame({'date': [date]})
+            df["date"] = pd.to_datetime(df["date"])
+            df["month"] = df["date"].dt.month
+            df["year"] = df["date"].dt.year
+            df["day"] = df["date"].dt.day
+            day_match = True
+            month_match = True
+            year_match = True
+            if not day == None:
+                if not (df["day"] == day).all():
+                    day_match = False
+            if not month == None:
+                if not (df["month"] == month).all():
+                    month_match = False
+            if not year == None:
+                if not (df["year"] == year).all():
+                    year_match = False
+            if day_match and month_match and year_match:
+                comments.append(each)
         return comments
 
     def commonEditors(self, collection_name1, collection_name2):
@@ -442,9 +469,9 @@ if __name__ == '__main__':
 
     try:
         myclient.admin.command('ismaster')
-        print("Server available")
+        print("\nServer available\n")
     except ConnectionFailure:
-        print("Server not available")
+        print("\nServer not available\n")
         exit()
 
     mongoClientDB = myclient['mywikidump']
@@ -457,38 +484,46 @@ if __name__ == '__main__':
     # List the editors
     collection_name = 'India'
     if collection_name not in (mongoClientDB).list_collection_names():
-        print("--Collection with specified name does not exist--")
+        print("\n--Collection with specified name does not exist--\n")
     else:
         editors = analyzer.listOfEditors(collection_name)
-        print('\'', collection_name, '\' talk page has', len(editors), 'editors')
+        print('\n\'', collection_name, '\' talk page has', len(editors), 'editors\n')
 
     # Find top editors
     collection_name = 'India'
     if collection_name not in (mongoClientDB).list_collection_names():
-        print("--Collection with specified name does not exist--")
+        print("\n--Collection with specified name does not exist--\n")
     else:
         n = 5
         top_editors = analyzer.topNEditors(collection_name, n)
-        print('List of top', len(top_editors), 'editors :', top_editors)
+        print('\nList of top', len(top_editors), 'editors :', top_editors, '\n')
 
     # Find the sentiments of each comment
     collection_name = 'India'
     if collection_name not in (mongoClientDB).list_collection_names():
-        print("--Collection with specified name does not exist--")
+        print("\n--Collection with specified name does not exist--\n")
     else:
         comments = analyzer.getCommentSentiments(collection_name, "RegentsPark")
         for comment in comments:
-            print('Polarity scores of the comment with id', comment["id"], ':', comment["polarity_scores"])
+            print('\nPolarity scores of the comment with id', comment["id"], ':', comment["polarity_scores"], '\n')
+
+    # Find comments by day/month/year
+    collection_name = 'India'
+    if collection_name not in (mongoClientDB).list_collection_names():
+        print("\n--Collection with specified name does not exist--\n")
+    else:
+        comments = analyzer.getCommentsByDate(collection_name, day=5, month=11, year=2020)
+        print('\nComments:', comments, '\n')
 
     # Common editors
     collection_name1 = 'India'
     collection_name2 = 'Narendra Modi'
     if collection_name1 not in (mongoClientDB).list_collection_names() or collection_name2 not in (mongoClientDB).list_collection_names():
-        print("--Collection does not exist--")
+        print("\n--Collection with specified name does not exist--\n")
     else:
         common_editors = analyzer.commonEditors(
             collection_name1, collection_name2)
-        print('Common editors are :', common_editors)
+        print('\nCommon editors are :', common_editors, '\n')
 
     # analyzer.setCollectionName('sample')
     # print(analyzer.getAllAuthors())
