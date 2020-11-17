@@ -145,6 +145,20 @@ class Analyzer:
                 comments.append(each)
         return comments
 
+    def getCommentsForGivenDuration(self, collection_name, start_date, end_date):
+        collection = self.mongoClientDB[collection_name]
+        comments = []
+        for each in collection.find():
+            date = each["date"]
+            date = date.split('T')[0]
+            date = pd.to_datetime(date)
+            start_date = pd.to_datetime(start_date)
+            end_date = pd.to_datetime(end_date)
+            if date >= start_date and date <= end_date:
+                comments.append(each)
+        return comments
+
+
     def commonEditors(self, collection_name1, collection_name2):
         collection1 = self.mongoClientDB[collection_name1]
         editors1 = (collection1.distinct('user'))
@@ -513,7 +527,17 @@ if __name__ == '__main__':
         print("\n--Collection with specified name does not exist--\n")
     else:
         comments = analyzer.getCommentsByDate(collection_name, day=5, month=11, year=2020)
-        print('\nComments:', comments, '\n')
+        print('\nComments for specified date:\n', comments, '\n')
+    
+    # Find comments for given duration
+    collection_name = 'India'
+    if collection_name not in (mongoClientDB).list_collection_names():
+        print("\n--Collection with specified name does not exist--\n")
+    else:
+        date1 = '2020-11-04'
+        date2 = '2020-11-15'
+        comments = analyzer.getCommentsForGivenDuration(collection_name, date1, date2)
+        print('\nComments of given duration:\n', comments, '\n')
 
     # Common editors
     collection_name1 = 'India'
