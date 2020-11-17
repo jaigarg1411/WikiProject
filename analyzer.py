@@ -1,21 +1,25 @@
-from os import sched_getaffinity
-import pymongo
 import json
 import operator
 import math
-import matplotlib.pyplot as plt
 import requests
 import numpy as np
+from pymongo.mongo_client import MongoClient
+from pymongo.collection import Collection
+from pymongo.database import Database
 from pymongo.errors import ConnectionFailure
+from matplotlib import pyplot as plt
 from collections import Counter
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+sentiment_intensity_analyzer = SentimentIntensityAnalyzer()
 
 
-'''def download_file(filename):
+'''
+
+def download_file(filename):
     file = filename
     url = 'https://wikitalkpages.s3.ap-south-1.amazonaws.com/' + file + '.json'
     r = requests.get(url, allow_redirects=True)
     open(file + '.json', 'wb').write(r.content)
-    
 
 
 def putInDatabase(collection_name, file_name, myclient, mongoClientDB):
@@ -26,12 +30,14 @@ def putInDatabase(collection_name, file_name, myclient, mongoClientDB):
         if i != len(data)-1:
             data[i] += "\"}"
         ins = json.loads(data[i])
-        collection.insert(ins)'''
+        collection.insert(ins)
+
+'''
 
 
 class Analyzer:
 
-    def __init__(self, myclient, mongoClientDB):
+    def __init__(self, myclient: MongoClient, mongoClientDB: Database):
         self.myclient = myclient
         self.mongoClientDB = mongoClientDB
         self.dataCollectionName = None
@@ -39,7 +45,7 @@ class Analyzer:
     def download_file(self, filename):
         '''   
         The function downloads the full article dataset from the server
-        
+
         Parameters
         ----------
         filename : TYPE
@@ -48,35 +54,36 @@ class Analyzer:
         -------
         None.
         '''
-        
-        file = filename
-        url = 'https://wikitalkpages.s3.ap-south-1.amazonaws.com/' + file + '.json'
+
+        fn = filename
+        url = 'https://wikitalkpages.s3.ap-south-1.amazonaws.com/' + fn + '.json'
         r = requests.get(url, allow_redirects=True)
-        json_file = file + '.json'
+        json_file = fn + '.json'
         open(filename, 'wb').write(r.content)
 
-    def putInDatabase(self, file_name):
+    def putInDatabase(self, file_name, encoding="utf-8"):
         collection_name = file_name[:-5]
         if collection_name in (self.mongoClientDB).list_collection_names():
             collection = self.mongoClientDB[collection_name]
             collection.drop()
         collection = self.mongoClientDB[collection_name]
-        with open(file_name) as file: 
-            file_data = json.load(file)
-        if isinstance(file_data, list): 
-            collection.insert_many(file_data)   
-        else: 
+        with open(file_name, encoding=encoding) as fh:
+            file_data = json.load(fh)
+        if isinstance(file_data, list):
+            collection.insert_many(file_data)
+        else:
             collection.insert_one(file_data)
 
     def listOfEditors(self, collection_name):
         collection = self.mongoClientDB[collection_name]
         editors = (collection.distinct('user'))
-        return editors 
+        return editors
 
     def topNEditors(self, collection_name, n):
-        top_editors = {}  
+        top_editors = {}
         collection = self.mongoClientDB[collection_name]
-        result = list(collection.aggregate([{"$group" : {"_id" : "$user", "num_comments" : {"$sum" : 1}}}]))
+        result = list(collection.aggregate(
+            [{"$group": {"_id": "$user", "num_comments": {"$sum": 1}}}]))
         for each in result:
             editor = each.get('_id')
             num_comments = each.get('num_comments')
@@ -87,6 +94,29 @@ class Analyzer:
             top = Counter(top_editors)
             top_editors = top.most_common(n)
         return top_editors
+
+    def getCommentSentiments(self, collection_name, user=None):
+        '''
+        Find sentiments of comments in the specified collection.
+        If `user` parameter is unspecified or None, predicts the sentiments of all the comments
+        in the specified collection.
+        Positive sentiment : (compound score >= 0.05)
+        Neutral sentiment : (compound score > -0.05) and (compound score < 0.05)
+        Negative sentiment : (compound score <= -0.05)
+        '''
+        collection = Collection(self.mongoClientDB, collection_name)
+        comments = list()
+
+        if user == None:
+            for comment in collection.find():
+                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(comment["text"])
+                comments.append(comment)
+        else:
+            for comment in collection.find({"user":user}):
+                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(comment["text"])
+                comments.append(comment)
+
+        return comments
 
     def commonEditors(self, collection_name1, collection_name2):
         collection1 = self.mongoClientDB[collection_name1]
@@ -408,50 +438,62 @@ class Analyzer:
 
 if __name__ == '__main__':
 
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+    myclient = MongoClient("mongodb://localhost:27017/")
+
     try:
         myclient.admin.command('ismaster')
         print("Server available")
     except ConnectionFailure:
         print("Server not available")
         exit()
+
     mongoClientDB = myclient['mywikidump']
     analyzer = Analyzer(myclient, mongoClientDB)
-    #analyzer.putInDatabase('sample.json')
+    # analyzer.putInDatabase('sample.json')
     analyzer.putInDatabase('India.json')
     analyzer.putInDatabase('Narendra Modi.json')
     analyzer.putInDatabase('Donald Trump.json')
 
-    #List the editors
+    # List the editors
     collection_name = 'India'
     if collection_name not in (mongoClientDB).list_collection_names():
         print("--Collection with specified name does not exist--")
     else:
         editors = analyzer.listOfEditors(collection_name)
-        print('\'',collection_name,'\' talk page has', len(editors), 'editors')
-    
-    #Find top editors
+        print('\'', collection_name, '\' talk page has', len(editors), 'editors')
+
+    # Find top editors
     collection_name = 'India'
     if collection_name not in (mongoClientDB).list_collection_names():
         print("--Collection with specified name does not exist--")
     else:
         n = 5
         top_editors = analyzer.topNEditors(collection_name, n)
-        print('List of top', len(top_editors), 'editors: ', top_editors)
+        print('List of top', len(top_editors), 'editors :', top_editors)
 
-    #Common editors
+    # Find the sentiments of each comment
+    collection_name = 'India'
+    if collection_name not in (mongoClientDB).list_collection_names():
+        print("--Collection with specified name does not exist--")
+    else:
+        comments = analyzer.getCommentSentiments(collection_name, "RegentsPark")
+        for comment in comments:
+            print('Polarity scores of the comment with id', comment["id"], ':', comment["polarity_scores"])
+
+    # Common editors
     collection_name1 = 'India'
     collection_name2 = 'Narendra Modi'
     if collection_name1 not in (mongoClientDB).list_collection_names() or collection_name2 not in (mongoClientDB).list_collection_names():
         print("--Collection does not exist--")
     else:
-        common_editors = analyzer.commonEditors(collection_name1, collection_name2)
-        print('Common editors are: ', common_editors)
+        common_editors = analyzer.commonEditors(
+            collection_name1, collection_name2)
+        print('Common editors are :', common_editors)
 
-    #analyzer.setCollectionName('sample')
-    #print(analyzer.getAllAuthors())
-    #analyzer.downloadAndLoad(
-        #'Indian_Institute_of_Technology_Ropar', 'Indian_Institute_of_Technology_Ropar')
+    # analyzer.setCollectionName('sample')
+    # print(analyzer.getAllAuthors())
+    # analyzer.downloadAndLoad(
+        # 'Indian_Institute_of_Technology_Ropar', 'Indian_Institute_of_Technology_Ropar')
 
     """
 	analyzer.deleteCollection('Indian_Institute_of_Technology_Ropar')
