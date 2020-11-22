@@ -12,6 +12,7 @@ from collections import Counter
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 sentiment_intensity_analyzer = SentimentIntensityAnalyzer()
 import pandas as pd
+import os
 
 
 '''
@@ -62,13 +63,13 @@ class Analyzer:
         json_file = fn + '.json'
         open(filename, 'wb').write(r.content)
 
-    def putInDatabase(self, file_name, encoding="utf-8"):
-        collection_name = file_name[:-5]
+    def putInDatabase(self, folder_path, file_name, collection_name,encoding="utf-8"):
         if collection_name in (self.mongoClientDB).list_collection_names():
             collection = self.mongoClientDB[collection_name]
             collection.drop()
         collection = self.mongoClientDB[collection_name]
-        with open(file_name, encoding=encoding) as fh:
+        file_path = folder_path + file_name
+        with open(file_path, encoding=encoding) as fh:
             file_data = json.load(fh)
         if isinstance(file_data, list):
             collection.insert_many(file_data)
@@ -488,64 +489,73 @@ if __name__ == '__main__':
         print("\nServer not available\n")
         exit()
 
-    mongoClientDB = myclient['mywikidump']
-    analyzer = Analyzer(myclient, mongoClientDB)
+    mongoClientTalkPagesDB = myclient['mywikidumptalkpages']
+    analyzer_talk = Analyzer(myclient, mongoClientTalkPagesDB)
+
+    mongoClientRevisionsDB = myclient['mywikidumprevisions']
+    analyzer_revision = Analyzer(myclient, mongoClientRevisionsDB)
     # analyzer.putInDatabase('sample.json')
-    analyzer.putInDatabase('India.json')
-    analyzer.putInDatabase('Narendra Modi.json')
-    analyzer.putInDatabase('Donald Trump.json')
+    for filename in os.listdir('Talk Pages'):
+        if filename.endswith('.json'):
+            collection_name = filename[:-5]
+            analyzer_talk.putInDatabase('Talk Pages/', filename, collection_name)
+
+    for filename in os.listdir('Revision'):
+        if filename.endswith('.json'):
+            collection_name = filename[:-5]
+            analyzer_revision.putInDatabase('Revision/', filename, collection_name)
 
     # List the editors
     collection_name = 'India'
-    if collection_name not in (mongoClientDB).list_collection_names():
+    if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        editors = analyzer.listOfEditors(collection_name)
+        editors = analyzer_talk.listOfEditors(collection_name)
         print('\n\'', collection_name, '\' talk page has', len(editors), 'editors\n')
 
     # Find top editors
     collection_name = 'India'
-    if collection_name not in (mongoClientDB).list_collection_names():
+    if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
         n = 5
-        top_editors = analyzer.topNEditors(collection_name, n)
+        top_editors = analyzer_talk.topNEditors(collection_name, n)
         print('\nList of top', len(top_editors), 'editors :', top_editors, '\n')
 
     # Find the sentiments of each comment
     collection_name = 'India'
-    if collection_name not in (mongoClientDB).list_collection_names():
+    if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        comments = analyzer.getCommentSentiments(collection_name, "RegentsPark")
+        comments = analyzer_talk.getCommentSentiments(collection_name, "RegentsPark")
         for comment in comments:
             print('\nPolarity scores of the comment with id', comment["id"], ':', comment["polarity_scores"], '\n')
 
     # Find comments by day/month/year
     collection_name = 'India'
-    if collection_name not in (mongoClientDB).list_collection_names():
+    if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        comments = analyzer.getCommentsByDate(collection_name, day=5, month=11, year=2020)
+        comments = analyzer_talk.getCommentsByDate(collection_name, day=5, month=11, year=2020)
         print('\nComments for specified date:\n', comments, '\n')
     
     # Find comments for given duration
     collection_name = 'India'
-    if collection_name not in (mongoClientDB).list_collection_names():
+    if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
         date1 = '2020-11-04'
         date2 = '2020-11-15'
-        comments = analyzer.getCommentsForGivenDuration(collection_name, date1, date2)
+        comments = analyzer_talk.getCommentsForGivenDuration(collection_name, date1, date2)
         print('\nComments of given duration:\n', comments, '\n')
 
     # Common editors
     collection_name1 = 'India'
     collection_name2 = 'Narendra Modi'
-    if collection_name1 not in (mongoClientDB).list_collection_names() or collection_name2 not in (mongoClientDB).list_collection_names():
+    if collection_name1 not in (mongoClientTalkPagesDB).list_collection_names() or collection_name2 not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        common_editors = analyzer.commonEditors(
+        common_editors = analyzer_talk.commonEditors(
             collection_name1, collection_name2)
         print('\nCommon editors are :', common_editors, '\n')
 
