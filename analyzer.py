@@ -186,17 +186,20 @@ class Analyzer:
         return comments
 
 
-    def commonEditors(self, collection_name1, collection_name2):
+    def commonEditors(self, collection_names_list):
         '''
         Find list of all common editors within two talk pages:
-        collection_name1 and collection_name2: Specify the collection names within database whose common editors are required
+        collection_name_list: Specify the collection names within database whose common editors are required
         '''
-        collection1 = self.mongoClientDB[collection_name1]
-        editors1 = (collection1.distinct('user'))
-        collection2 = self.mongoClientDB[collection_name2]
-        editors2 = (collection2.distinct('user'))
-        common_editors = list(set(editors1) & set(editors2))
-        return common_editors
+        editors = []
+        for each in collection_names_list:
+            collection = self.mongoClientDB[each]
+            editors_collection = (collection.distinct('user'))
+            editors.append(editors_collection)
+        common_editors = set(editors[0])
+        for each in editors[1:]:
+            common_editors.intersection_update(each)
+        return list(common_editors)
 
     """def deleteCollection(self, collection_name):
         collection = self.mongoClientDB[collection_name]
@@ -524,12 +527,12 @@ if __name__ == '__main__':
 
     mongoClientRevisionsDB = myclient['mywikidumprevisions']
     analyzer_revision = Analyzer(myclient, mongoClientRevisionsDB)
-    # analyzer.putInDatabase('sample.json')
+    # Dumping Talk Pages to database
     for filename in os.listdir('Talk Pages'):
         if filename.endswith('.json'):
             collection_name = filename[:-5]
             analyzer_talk.putInDatabase('Talk Pages/', filename, collection_name)
-
+    # Dumping Revision Pages to database
     for filename in os.listdir('Revision'):
         if filename.endswith('.json'):
             collection_name = filename[:-5]
@@ -580,19 +583,15 @@ if __name__ == '__main__':
         print('\nComments of given duration:\n', comments, '\n')
 
     # Common editors
-    collection_name1 = 'India'
-    collection_name2 = 'Narendra Modi'
-    if collection_name1 not in (mongoClientTalkPagesDB).list_collection_names() or collection_name2 not in (mongoClientTalkPagesDB).list_collection_names():
-        print("\n--Collection with specified name does not exist--\n")
-    else:
-        common_editors = analyzer_talk.commonEditors(
-            collection_name1, collection_name2)
+    collection_name_list = ['India', 'Narendra Modi']
+    invalid_collection_name = False
+    for each in collection_name_list:
+        if each not in (mongoClientTalkPagesDB).list_collection_names():
+            print("\n--Collection with name", each,"does not exist, please check the list--\n")
+            invalid_collection_name = True
+    if not invalid_collection_name:
+        common_editors = analyzer_talk.commonEditors(collection_name_list)
         print('\nCommon editors are :', common_editors, '\n')
-
-    # analyzer.setCollectionName('sample')
-    # print(analyzer.getAllAuthors())
-    # analyzer.downloadAndLoad(
-        # 'Indian_Institute_of_Technology_Ropar', 'Indian_Institute_of_Technology_Ropar')
 
     """
 	analyzer.deleteCollection('Indian_Institute_of_Technology_Ropar')
