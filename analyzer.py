@@ -1,3 +1,5 @@
+import os
+import pandas as pd
 import json
 import operator
 import math
@@ -11,30 +13,6 @@ from matplotlib import pyplot as plt
 from collections import Counter
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 sentiment_intensity_analyzer = SentimentIntensityAnalyzer()
-import pandas as pd
-import os
-
-
-'''
-
-def download_file(filename):
-    file = filename
-    url = 'https://wikitalkpages.s3.ap-south-1.amazonaws.com/' + file + '.json'
-    r = requests.get(url, allow_redirects=True)
-    open(file + '.json', 'wb').write(r.content)
-
-
-def putInDatabase(collection_name, file_name, myclient, mongoClientDB):
-    collection = mongoClientDB[collection_name]
-    json_file = open(file_name)
-    data = json_file.read().strip("[]").split("\"},")
-    for i in range(len(data)):
-        if i != len(data)-1:
-            data[i] += "\"}"
-        ins = json.loads(data[i])
-        collection.insert(ins)
-
-'''
 
 
 class Analyzer:
@@ -63,7 +41,7 @@ class Analyzer:
         json_file = fn + '.json'
         open(filename, 'wb').write(r.content)
 
-    def putInDatabase(self, folder_path, file_name, collection_name,encoding="utf-8"):
+    def putInDatabase(self, file_path, collection_name, encoding="utf-8"):
         '''
         Dump JSON file into the respective database:
         folder_path: Specify the path to the folder where JSON files are kept,
@@ -74,7 +52,6 @@ class Analyzer:
             collection = self.mongoClientDB[collection_name]
             collection.drop()
         collection = self.mongoClientDB[collection_name]
-        file_path = folder_path + file_name
         with open(file_path, encoding=encoding) as fh:
             file_data = json.load(fh)
         if isinstance(file_data, list):
@@ -125,11 +102,13 @@ class Analyzer:
 
         if user == None:
             for comment in collection.find():
-                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(comment["text"])
+                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(
+                    comment["text"])
                 comments.append(comment)
         else:
-            for comment in collection.find({"user":user}):
-                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(comment["text"])
+            for comment in collection.find({"user": user}):
+                comment["polarity_scores"] = sentiment_intensity_analyzer.polarity_scores(
+                    comment["text"])
                 comments.append(comment)
 
         return comments
@@ -185,7 +164,6 @@ class Analyzer:
                 comments.append(each)
         return comments
 
-
     def commonEditors(self, collection_names_list):
         '''
         Find list of all common editors within two talk pages:
@@ -201,13 +179,13 @@ class Analyzer:
             common_editors.intersection_update(each)
         return list(common_editors)
 
-    """def deleteCollection(self, collection_name):
+    def deleteCollection(self, collection_name):
         collection = self.mongoClientDB[collection_name]
         collection.drop()
 
     def downloadAndLoad(self, collection_name, filename):
         self.download_file(filename)
-        self.putInDatabase(collection_name, filename)
+        self.putInDatabase(filename, collection_name)
 
     def setCollectionName(self, dataCollectionName):
         self.dataCollectionName = dataCollectionName
@@ -508,7 +486,7 @@ class Analyzer:
         dictionary['standardDev'] = standardDev
         dictionary['count'] = count
         dictionary['variance'] = variance
-        return dictionary"""
+        return dictionary
 
 
 if __name__ == '__main__':
@@ -527,16 +505,20 @@ if __name__ == '__main__':
 
     mongoClientRevisionsDB = myclient['mywikidumprevisions']
     analyzer_revision = Analyzer(myclient, mongoClientRevisionsDB)
+
     # Dumping Talk Pages to database
     for filename in os.listdir('Talk Pages'):
         if filename.endswith('.json'):
             collection_name = filename[:-5]
-            analyzer_talk.putInDatabase('Talk Pages/', filename, collection_name)
-    # Dumping Revision Pages to database
-    for filename in os.listdir('Revision'):
+            analyzer_talk.putInDatabase(os.path.join(os.path.dirname(
+                os.path.abspath(__file__)), "Talk Pages", filename), collection_name)
+
+    # Dumping Revision History Pages to database
+    for filename in os.listdir('Revision History Pages'):
         if filename.endswith('.json'):
             collection_name = filename[:-5]
-            analyzer_revision.putInDatabase('Revision/', filename, collection_name)
+            analyzer_revision.putInDatabase(os.path.join(os.path.dirname(
+                os.path.abspath(__file__)), "Revision History Pages", filename), collection_name)
 
     # List the editors
     collection_name = 'India'
@@ -544,7 +526,8 @@ if __name__ == '__main__':
         print("\n--Collection with specified name does not exist--\n")
     else:
         editors = analyzer_talk.listOfEditors(collection_name)
-        print('\n\'', collection_name, '\' talk page has', len(editors), 'editors\n')
+        print('\n\'', collection_name, '\' talk page has',
+              len(editors), 'editors\n')
 
     # Find top editors
     collection_name = 'India'
@@ -553,25 +536,29 @@ if __name__ == '__main__':
     else:
         n = 5
         top_editors = analyzer_talk.topNEditors(collection_name, n)
-        print('\nList of top', len(top_editors), 'editors :', top_editors, '\n')
+        print('\nList of top', len(top_editors),
+              'editors :', top_editors, '\n')
 
     # Find the sentiments of each comment
     collection_name = 'India'
     if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        comments = analyzer_talk.getCommentSentiments(collection_name, "RegentsPark")
+        comments = analyzer_talk.getCommentSentiments(
+            collection_name, "RegentsPark")
         for comment in comments:
-            print('\nPolarity scores of the comment with id', comment["id"], ':', comment["polarity_scores"], '\n')
+            print('\nPolarity scores of the comment with id',
+                  comment["id"], ':', comment["polarity_scores"], '\n')
 
     # Find comments by day/month/year
     collection_name = 'India'
     if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
         print("\n--Collection with specified name does not exist--\n")
     else:
-        comments = analyzer_talk.getCommentsByDate(collection_name, day=5, month=11, year=2020)
+        comments = analyzer_talk.getCommentsByDate(
+            collection_name, day=5, month=11, year=2020)
         print('\nComments for specified date:\n', comments, '\n')
-    
+
     # Find comments for given duration
     collection_name = 'India'
     if collection_name not in (mongoClientTalkPagesDB).list_collection_names():
@@ -579,7 +566,8 @@ if __name__ == '__main__':
     else:
         date1 = '2020-11-04'
         date2 = '2020-11-15'
-        comments = analyzer_talk.getCommentsForGivenDuration(collection_name, date1, date2)
+        comments = analyzer_talk.getCommentsForGivenDuration(
+            collection_name, date1, date2)
         print('\nComments of given duration:\n', comments, '\n')
 
     # Common editors
@@ -587,7 +575,8 @@ if __name__ == '__main__':
     invalid_collection_name = False
     for each in collection_name_list:
         if each not in (mongoClientTalkPagesDB).list_collection_names():
-            print("\n--Collection with name", each,"does not exist, please check the list--\n")
+            print("\n--Collection with name", each,
+                  "does not exist, please check the list--\n")
             invalid_collection_name = True
     if not invalid_collection_name:
         common_editors = analyzer_talk.commonEditors(collection_name_list)
