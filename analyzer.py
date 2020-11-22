@@ -64,6 +64,12 @@ class Analyzer:
         open(filename, 'wb').write(r.content)
 
     def putInDatabase(self, folder_path, file_name, collection_name,encoding="utf-8"):
+        '''
+        Dump JSON file into the respective database:
+        folder_path: Specify the path to the folder where JSON files are kept,
+        file_name: name of JSON file,
+        collection_name: Name of collection in the database
+        '''
         if collection_name in (self.mongoClientDB).list_collection_names():
             collection = self.mongoClientDB[collection_name]
             collection.drop()
@@ -77,11 +83,19 @@ class Analyzer:
             collection.insert_one(file_data)
 
     def listOfEditors(self, collection_name):
+        '''
+        Find list of all editors within a talk page:
+        collection_name: Specify the collection name within database whose editors are required
+        '''
         collection = self.mongoClientDB[collection_name]
         editors = (collection.distinct('user'))
         return editors
 
     def topNEditors(self, collection_name, n):
+        '''
+        Find list of top 'N' editors of a talk page (arranged in decreasing order of no. of edits):
+        collection_name: Specify the collection name within database whose editors are required
+        '''
         top_editors = {}
         collection = self.mongoClientDB[collection_name]
         result = list(collection.aggregate(
@@ -121,8 +135,15 @@ class Analyzer:
         return comments
 
     def getCommentsByDate(self, collection_name, day=None, month=None, year=None):
+        '''
+        Find list of all comments within a talk page of specified date:
+        collection_name: Specify the collection name within database whose comments are required,
+        Specify at least one of day, month, year, (only the specified parameters will be compared)
+        '''
         collection = self.mongoClientDB[collection_name]
         comments = []
+        if day == None and month == None and year == None:
+            return comments
         for each in collection.find():
             date = each["date"]
             df = pd.DataFrame({'date': [date]})
@@ -147,6 +168,11 @@ class Analyzer:
         return comments
 
     def getCommentsForGivenDuration(self, collection_name, start_date, end_date):
+        '''
+        Find list of all comments within a talk page within specified duration:
+        collection_name: Specify the collection name within database whose comments are required
+        start_date and end_date: Specify start and end date "strings" of the duration
+        '''
         collection = self.mongoClientDB[collection_name]
         comments = []
         for each in collection.find():
@@ -161,6 +187,10 @@ class Analyzer:
 
 
     def commonEditors(self, collection_name1, collection_name2):
+        '''
+        Find list of all common editors within two talk pages:
+        collection_name1 and collection_name2: Specify the collection names within database whose common editors are required
+        '''
         collection1 = self.mongoClientDB[collection_name1]
         editors1 = (collection1.distinct('user'))
         collection2 = self.mongoClientDB[collection_name2]
